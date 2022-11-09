@@ -184,8 +184,6 @@ fn main() {
 
     let (top_level_nodes, has_errors) = walk_it(simplified_dirs, walk_data, info.data.clone());
 
-    info.stop();
-
     let tree = match summarize_file_types {
         true => get_all_file_types(&top_level_nodes, number_of_lines),
         false => {
@@ -200,6 +198,8 @@ fn main() {
             get_biggest(top_level_nodes, agg_data)
         }
     };
+
+    info.stop();
 
     if has_errors {
         eprintln!("Did not have permissions for all directories");
