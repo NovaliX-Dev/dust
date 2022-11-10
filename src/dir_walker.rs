@@ -4,6 +4,7 @@ use std::sync::Arc;
 use crate::progress;
 use crate::progress::PAtomicInfo;
 use crate::node::Node;
+use crate::progress::PConfig;
 use crate::utils::is_filtered_out_due_to_invert_regex;
 use crate::utils::is_filtered_out_due_to_regex;
 use rayon::iter::ParallelBridge;
@@ -36,6 +37,7 @@ pub fn walk_it(
     dirs: HashSet<PathBuf>,
     walk_data: WalkData,
     info_data: Arc<PAtomicInfo>,
+    info_conf: Arc<PConfig>,
 ) -> (Vec<Node>, bool) {
     let permissions_flag = AtomicBool::new(false);
 
@@ -44,7 +46,7 @@ pub fn walk_it(
         .into_iter()
         .filter_map(|d| {
             clean_inodes(
-                walk(d, &permissions_flag, &walk_data, &info_data, 0)?,
+                walk(d, &permissions_flag, &walk_data, &info_data, &info_conf, 0)?,
                 &mut inodes,
                 &info_data,
                 walk_data.use_apparent_size,
@@ -141,6 +143,7 @@ fn walk(
     permissions_flag: &AtomicBool,
     walk_data: &WalkData,
     info_data: &Arc<PAtomicInfo>,
+    info_conf: &Arc<PConfig>,
     depth: usize,
 ) -> Option<Node> {
     info_data
@@ -164,7 +167,14 @@ fn walk(
                     if !ignore_file(entry, walk_data) {
                         if let Ok(data) = entry.file_type() {
                             if data.is_dir() || (walk_data.follow_links && data.is_symlink()) {
-                                return walk(entry.path(), permissions_flag, walk_data, info_data, depth + 1);
+                                return walk(
+                                    entry.path(),
+                                    permissions_flag,
+                                    walk_data,
+                                    info_data,
+                                    info_conf,
+                                    depth + 1,
+                                );
                             } else {
                                 let n = build_node(
                                     entry.path(),
@@ -180,10 +190,13 @@ fn walk(
 
                                 if let Some(ref node) = n {
                                     info_data.file_number.fetch_add(1, progress::ATOMIC_ORDERING);
-                                    info_data
-                                        .total_file_size
-                                        .inner
-                                        .fetch_add(node.size, progress::ATOMIC_ORDERING);
+
+                                    if !info_conf.file_count_only {
+                                        info_data
+                                            .total_file_size
+                                            .inner
+                                            .fetch_add(node.size, progress::ATOMIC_ORDERING);
+                                    }
                                 }
 
                                 return n;
