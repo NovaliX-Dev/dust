@@ -177,6 +177,7 @@ fn main() {
         ignore_hidden: config.get_ignore_hidden(&options),
         follow_links,
     };
+
     let _rayon = init_rayon();
 
     let iso = config.get_iso(&options);
@@ -205,6 +206,7 @@ fn main() {
     if has_errors {
         eprintln!("Did not have permissions for all directories");
     }
+
     if let Some(root_node) = tree {
         draw_it(
             config.get_full_paths(&options),
