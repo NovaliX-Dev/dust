@@ -168,6 +168,15 @@ fn main() {
         .flat_map(|x| simplified_dirs.iter().map(move |d| d.join(&x)))
         .collect();
 
+    let iso = config.get_iso(&options);
+
+    let conf = PConfig {
+        file_count_only: by_filecount,
+        use_iso: iso,
+    };
+
+    let info = PIndicator::spawn(conf);
+
     let walk_data = WalkData {
         ignore_directories: ignored_full_path,
         filter_regex: &filter_regexs,
@@ -177,23 +186,15 @@ fn main() {
         by_filecount,
         ignore_hidden: config.get_ignore_hidden(&options),
         follow_links,
+        progress_config: info.config.clone(),
+        progress_data: info.data.clone()
     };
 
     let _rayon = init_rayon();
 
-    let iso = config.get_iso(&options);
-
-    let conf = PConfig {
-        file_count_only: walk_data.by_filecount,
-        use_iso: config.get_iso(&options),
-    };
-    let info = PIndicator::spawn(conf);
-
     let (top_level_nodes, has_errors) = walk_it(
         simplified_dirs,
         walk_data,
-        info.data.clone(),
-        info.config.clone(),
     );
 
     let tree = match summarize_file_types {

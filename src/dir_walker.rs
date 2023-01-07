@@ -32,13 +32,13 @@ pub struct WalkData<'a> {
     pub by_filecount: bool,
     pub ignore_hidden: bool,
     pub follow_links: bool,
+    pub progress_config: Arc<PConfig>,
+    pub progress_data: Arc<PAtomicInfo>
 }
 
 pub fn walk_it(
     dirs: HashSet<PathBuf>,
     walk_data: WalkData,
-    info_data: Arc<PAtomicInfo>,
-    info_conf: Arc<PConfig>,
 ) -> (Vec<Node>, bool) {
     let permissions_flag = AtomicBool::new(false);
 
@@ -47,9 +47,9 @@ pub fn walk_it(
         .into_iter()
         .filter_map(|d| {
             clean_inodes(
-                walk(d, &permissions_flag, &walk_data, &info_data, &info_conf, 0)?,
+                walk(d, &permissions_flag, &walk_data, 0)?,
                 &mut inodes,
-                &info_data,
+                &walk_data.progress_data,
                 walk_data.use_apparent_size,
             )
         })
@@ -141,10 +141,11 @@ fn walk(
     dir: PathBuf,
     permissions_flag: &AtomicBool,
     walk_data: &WalkData,
-    info_data: &Arc<PAtomicInfo>,
-    info_conf: &Arc<PConfig>,
     depth: usize,
 ) -> Option<Node> {
+    let info_data = &walk_data.progress_data;
+    let info_conf = &walk_data.progress_config;
+
     info_data.state.set(progress::Operation::INDEXING);
     if depth == 0 {
         info_data
@@ -179,8 +180,6 @@ fn walk(
                                     entry.path(),
                                     permissions_flag,
                                     walk_data,
-                                    info_data,
-                                    info_conf,
                                     depth + 1,
                                 );
                             } else {
